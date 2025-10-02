@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRouter from "./routes/authRouter.js"; // pastikan nama file benar
+import bookingRouter from "./routes/bookingRoutes.js";
+import fieldRouter from "./routes/fieldRoutes.js";
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -10,8 +12,9 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase payload limit to 50MB for image uploads
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 const clientOptions = {
   serverApi: { version: "1", strict: true, deprecationErrors: true },
@@ -38,6 +41,8 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/auth", authRouter);
+app.use("/api/bookings", bookingRouter);
+app.use("/api/fields", fieldRouter); // Changed from "/api/" to "/api/fields"
 
 // Start server setelah DB connect
 connectDB()

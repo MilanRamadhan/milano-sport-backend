@@ -1,18 +1,18 @@
-const express = require("express");
-const { createBooking, getUserBookings, getBookingById, cancelBooking, uploadProofOfPayment, getAllBookings, updatePaymentStatus } = require("../controllers/bookingController");
-const { protect, admin } = require("../middleware/authMiddleware");
+import express from "express";
+import { createBooking, getUserBookings, getBookingById, cancelBooking, getAllBookings, updatePaymentStatus } from "../controllers/bookingController.js";
+import { verifyToken } from "../middleware/auth.js";
+import { upload } from "../config/cloudinary.js";
 
 const router = express.Router();
 
-// Protected routes (User)
-router.post("/", protect, createBooking);
-router.get("/", protect, getUserBookings);
-router.get("/:id", protect, getBookingById);
-router.put("/:id/cancel", protect, cancelBooking);
-router.post("/:id/upload-proof", protect, uploadProofOfPayment);
+// User
+router.post("/", verifyToken, upload.single("proofOfPayment"), createBooking);
+router.get("/me", verifyToken, getUserBookings);
+router.get("/:id", verifyToken, getBookingById);
+router.patch("/:id/cancel", verifyToken, cancelBooking);
 
-// Protected routes (Admin only)
-router.get("/admin/all", protect, admin, getAllBookings);
-router.put("/:id/payment-status", protect, admin, updatePaymentStatus);
+// Admin
+router.get("/", verifyToken, getAllBookings);
+router.patch("/:id/payment", verifyToken, updatePaymentStatus);
 
-module.exports = router;
+export default router;

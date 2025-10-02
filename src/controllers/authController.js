@@ -62,7 +62,7 @@ export const login = async (req, res) => {
       } else {
         const validateUser = await bcryptjs.compare(password, user.password);
         if (!validateUser) {
-          res.status(400).json({ status: 400, message: "Email atau kata sandi salah." });
+          return res.status(400).json({ status: 400, message: "Email atau kata sandi salah." });
         } else {
           const payload = {
             id: user._id,
@@ -118,5 +118,197 @@ export const logout = async (req, res) => {
     return res.status(200).json({ status: 200, message: "Pengguna berhasil keluar." });
   } catch (error) {
     return res.status(500).json({ status: 500, message: "Terjadi kesalahan saat keluar." });
+  }
+};
+
+// Get user profile
+export const getProfile = async (req, res) => {
+  try {
+    const userId = req.user.id; // Dari middleware auth
+
+    const user = await Auth.findById(userId).select("-password -token");
+    if (!user) {
+      return res.status(404).json({
+        status: 404,
+        message: "Pengguna tidak ditemukan.",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: user,
+      message: "Profil berhasil diambil.",
+    });
+  } catch (error) {
+    console.log("Error getting profile:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "Kesalahan server internal",
+    });
+  }
+};
+
+// Edit user profile
+export const editProfile = async (req, res) => {
+  try {
+    const userId = req.user.id; // Dari middleware auth
+    const { name, email, password, phone, address, birthDate, profileImage } = req.body;
+
+    // Validasi input
+    if (!name && !email && !password && !phone && !address && !birthDate && !profileImage) {
+      return res.status(400).json({
+        status: 400,
+        message: "Minimal satu kolom harus diisi untuk memperbarui profil.",
+      });
+    }
+
+    // Cari user berdasarkan ID
+    const user = await Auth.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        status: 404,
+        message: "Pengguna tidak ditemukan.",
+      });
+    }
+
+    // Cek apakah email sudah digunakan oleh user lain
+    if (email && email !== user.email) {
+      const emailExists = await Auth.findOne({ email, _id: { $ne: userId } });
+      if (emailExists) {
+        return res.status(400).json({
+          status: 400,
+          message: "Email sudah digunakan oleh pengguna lain.",
+        });
+      }
+    }
+
+    // Update data
+    const updateData = {};
+
+    if (name) {
+      updateData.name = name;
+    }
+
+    if (email) {
+      updateData.email = email;
+    }
+
+    if (phone !== undefined) {
+      updateData.phone = phone;
+    }
+
+    if (address !== undefined) {
+      updateData.address = address;
+    }
+
+    if (birthDate !== undefined) {
+      updateData.birthDate = birthDate;
+    }
+
+    if (profileImage !== undefined) {
+      updateData.profileImage = profileImage;
+    }
+
+    // Jika password diubah, hash password baru
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({
+          status: 400,
+          message: "Password minimal 6 karakter.",
+        });
+      }
+
+      try {
+        const hashedPassword = await bcryptjs.hash(password, 10);
+        updateData.password = hashedPassword;
+      } catch (hashError) {
+        return res.status(500).json({
+          status: 500,
+          message: "Gagal mengenkripsi password.",
+        });
+      }
+    }
+
+    // Update user
+    const updatedUser = await Auth.findByIdAndUpdate(userId, updateData, { new: true, runValidators: true }).select("-password -token");
+
+    return res.status(200).json({
+      status: 200,
+      data: updatedUser,
+      message: "Profil berhasil diperbarui.",
+    });
+  } catch (error) {
+    console.log("Error updating profile:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "Kesalahan server internal",
+    });
+  }
+};
+
+// Change password specifically
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Validasi input
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        status: 400,
+        message: "Password lama, password baru, dan konfirmasi password harus diisi.",
+      });
+    }
+
+    // Validasi password baru
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        status: 400,
+        message: "Password baru minimal 6 karakter.",
+      });
+    }
+
+    // Validasi konfirmasi password
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        status: 400,
+        message: "Password baru dan konfirmasi password tidak cocok.",
+      });
+    }
+
+    // Cari user
+    const user = await Auth.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        status: 404,
+        message: "Pengguna tidak ditemukan.",
+      });
+    }
+
+    // Verifikasi password lama
+    const isCurrentPasswordValid = await bcryptjs.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+        status: 400,
+        message: "Password lama tidak benar.",
+      });
+    }
+
+    // Hash password baru
+    const hashedNewPassword = await bcryptjs.hash(newPassword, 10);
+
+    // Update password
+    await Auth.findByIdAndUpdate(userId, { password: hashedNewPassword });
+
+    return res.status(200).json({
+      status: 200,
+      message: "Password berhasil diubah.",
+    });
+  } catch (error) {
+    console.log("Error changing password:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "Kesalahan server internal",
+    });
   }
 };

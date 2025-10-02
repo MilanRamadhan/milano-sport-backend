@@ -1,12 +1,7 @@
-const asyncHandler = require("express-async-handler");
-const Booking = require("../models/Booking");
-const Field = require("../models/Field");
-const { sendResponse } = require("../utils/response");
-const { upload } = require("../config/cloudinary");
+import Booking from "../models/Booking.js";
+import Field from "../models/Field.js";
 
-/**
- * Check if booking time conflicts with existing bookings
- */
+// ✅ Cek konflik booking
 const checkBookingConflict = async (fieldId, date, startTime, endTime, excludeBookingId = null) => {
   const bookingDate = new Date(date);
 
@@ -16,342 +11,282 @@ const checkBookingConflict = async (fieldId, date, startTime, endTime, excludeBo
       $gte: new Date(bookingDate.setHours(0, 0, 0, 0)),
       $lt: new Date(bookingDate.setHours(23, 59, 59, 999)),
     },
-    status: "active",
+    status: { $in: ["active", "pending"] },
     $or: [
-      // New booking starts during existing booking
-      {
-        startTime: { $lte: startTime },
-        endTime: { $gt: startTime },
-      },
-      // New booking ends during existing booking
-      {
-        startTime: { $lt: endTime },
-        endTime: { $gte: endTime },
-      },
-      // New booking completely overlaps existing booking
-      {
-        startTime: { $gte: startTime },
-        endTime: { $lte: endTime },
-      },
+      { startTime: { $lte: startTime }, endTime: { $gt: startTime } },
+      { startTime: { $lt: endTime }, endTime: { $gte: endTime } },
+      { startTime: { $gte: startTime }, endTime: { $lte: endTime } },
     ],
   };
 
-  if (excludeBookingId) {
-    query._id = { $ne: excludeBookingId };
-  }
+  if (excludeBookingId) query._id = { $ne: excludeBookingId };
 
-  const conflictingBooking = await Booking.findOne(query);
-  return conflictingBooking;
+  return await Booking.findOne(query);
 };
 
-/**
- * @desc Create new booking
- * @route POST /api/bookings
- * @access Private
- */
-const createBooking = asyncHandler(async (req, res) => {
-  const { fieldId, date, startTime, endTime, paymentMethod, notes } = req.body;
+// ✅ Buat booking
+export const createBooking = async (req, res) => {
+  try {
+    const { fieldId, date, startTime, endTime, customerName, customerPhone, notes } = req.body;
 
-  // Validasi input
-  if (!fieldId || !date || !startTime || !endTime || !paymentMethod) {
-    return sendResponse(res, 400, null, "", "Please provide all required fields");
-  }
+    // ✅ Cek bukti transfer
+    if (!req.file) {
+      return res.status(400).json({
+        status: 400,
+        message: "Bukti transfer wajib diupload",
+      });
+    }
+    const proofOfPaymentUrl = req.file.path;
 
-  // Validasi field exists
-  const field = await Field.findById(fieldId).populate("sport", "sportName");
-  if (!field || !field.isActive) {
-    return sendResponse(res, 404, null, "", "Field not found");
-  }
+    // ✅ Validasi tanggal (maks. 7 hari ke depan)
+    const bookingDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  // Validasi tanggal tidak di masa lalu
-  const bookingDate = new Date(date);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (bookingDate < today) {
-    return sendResponse(res, 400, null, "", "Cannot book for past dates");
-  }
+    if (bookingDate < today) {
+      return res.status(400).json({ status: 400, message: "Tanggal booking sudah lewat" });
+    }
 
-  // Validasi waktu
-  const startMinutes = startTime.split(":").reduce((h, m) => h * 60 + +m);
-  const endMinutes = endTime.split(":").reduce((h, m) => h * 60 + +m);
+    const maxDate = new Date();
+    maxDate.setDate(today.getDate() + 7);
+    if (bookingDate > maxDate) {
+      return res.status(400).json({ status: 400, message: "Booking hanya bisa untuk 7 hari ke depan" });
+    }
 
-  if (endMinutes <= startMinutes) {
-    return sendResponse(res, 400, null, "", "End time must be after start time");
-  }
+    // ✅ Validasi field
+    const field = await Field.findById(fieldId);
+    if (!field || !field.isActive) {
+      return res.status(404).json({ status: 404, message: "Lapangan tidak ditemukan" });
+    }
 
-  // Cek apakah field buka pada hari tersebut
-  const dayOfWeek = bookingDate.getDay();
-  const dayAvailability = field.availability.find((av) => av.dayOfWeek === dayOfWeek);
+    // ✅ Validasi waktu booking
+    const startMinutes = startTime.split(":").reduce((h, m) => h * 60 + +m);
+    const endMinutes = endTime.split(":").reduce((h, m) => h * 60 + +m);
+    if (endMinutes <= startMinutes) {
+      return res.status(400).json({ status: 400, message: "Waktu selesai harus lebih besar dari waktu mulai" });
+    }
 
-  if (!dayAvailability) {
-    return sendResponse(res, 400, null, "", "Field is closed on this day");
-  }
+    // ✅ Validasi jam buka
+    const dayOfWeek = bookingDate.getDay();
+    const dayAvailability = field.availability.find((av) => av.dayOfWeek === dayOfWeek);
+    if (!dayAvailability) {
+      return res.status(400).json({ status: 400, message: "Lapangan tutup pada hari ini" });
+    }
 
-  // Validasi waktu booking dalam jam operasional
-  const openMinutes = dayAvailability.openTime.split(":").reduce((h, m) => h * 60 + +m);
-  const closeMinutes = dayAvailability.closeTime.split(":").reduce((h, m) => h * 60 + +m);
+    const openMinutes = dayAvailability.openTime.split(":").reduce((h, m) => h * 60 + +m);
+    const closeMinutes = dayAvailability.closeTime.split(":").reduce((h, m) => h * 60 + +m);
+    if (startMinutes < openMinutes || endMinutes > closeMinutes) {
+      return res.status(400).json({
+        status: 400,
+        message: `Lapangan hanya buka dari ${dayAvailability.openTime} sampai ${dayAvailability.closeTime}`,
+      });
+    }
 
-  if (startMinutes < openMinutes || endMinutes > closeMinutes) {
-    return sendResponse(res, 400, null, "", `Field is only open from ${dayAvailability.openTime} to ${dayAvailability.closeTime}`);
-  }
+    // ✅ Cek konflik booking
+    const conflict = await checkBookingConflict(fieldId, date, startTime, endTime);
+    if (conflict) {
+      return res.status(400).json({ status: 400, message: "Waktu tersebut sudah dibooking" });
+    }
 
-  // Cek konflik dengan booking lain
-  const conflict = await checkBookingConflict(fieldId, date, startTime, endTime);
-  if (conflict) {
-    return sendResponse(res, 400, null, "", "Time slot is already booked");
-  }
+    // ✅ Hitung total biaya
+    const totalHours = (endMinutes - startMinutes) / 60;
+    const totalPrice = totalHours * field.pricePerHour;
 
-  // Hitung total hours dan price
-  const totalHours = (endMinutes - startMinutes) / 60;
-  const totalPrice = totalHours * field.pricePerHour;
+    if (!customerName || !customerPhone) {
+      return res.status(400).json({ status: 400, message: "Nama dan nomor telepon wajib diisi" });
+    }
 
-  // Buat booking
-  const booking = await Booking.create({
-    userId: req.user._id,
-    fieldId,
-    date: bookingDate,
-    startTime,
-    endTime,
-    totalHours,
-    totalPrice,
-    paymentMethod,
-    paymentStatus: paymentMethod === "cod" ? "pending" : "pending",
-    notes,
-  });
+    if (!fieldId || !date || !startTime || !endTime) {
+      return res.status(400).json({ status: 400, message: "Semua kolom wajib diisi" });
+    }
 
-  // Populate data untuk response
-  const populatedBooking = await Booking.findById(booking._id)
-    .populate("userId", "name email")
-    .populate("fieldId", "name pricePerHour")
-    .populate({
-      path: "fieldId",
-      populate: {
-        path: "sport",
-        select: "sportName",
-      },
+    // ✅ Buat booking
+    const booking = await Booking.create({
+      userId: req.user.id,
+      fieldId,
+      date: bookingDate,
+      startTime,
+      endTime,
+      totalHours,
+      totalPrice,
+      customerName,
+      customerPhone,
+      notes,
+      proofOfPayment: proofOfPaymentUrl,
+      paymentMethod: "transfer",
+      paymentStatus: "pending",
+      status: "pending", // tunggu verifikasi admin
     });
 
-  sendResponse(res, 201, populatedBooking, "Booking created successfully");
-});
+    // Populate booking data untuk response yang lengkap
+    const populatedBooking = await Booking.findById(booking._id).populate("userId", "name email").populate("fieldId", "name sport pricePerHour");
 
-/**
- * @desc Get user bookings
- * @route GET /api/bookings
- * @access Private
- */
-const getUserBookings = asyncHandler(async (req, res) => {
-  const { status, page = 1, limit = 10 } = req.query;
-
-  const query = { userId: req.user._id };
-  if (status) {
-    query.status = status;
-  }
-
-  const options = {
-    page: parseInt(page),
-    limit: parseInt(limit),
-    sort: { createdAt: -1 },
-    populate: [
-      {
-        path: "fieldId",
-        select: "name pricePerHour",
-        populate: {
-          path: "sport",
-          select: "sportName",
+    return res.status(201).json({
+      status: 201,
+      data: {
+        bookingId: booking._id,
+        booking: populatedBooking,
+        paymentInfo: {
+          totalPrice: booking.totalPrice,
+          paymentMethod: booking.paymentMethod,
+          paymentStatus: booking.paymentStatus,
         },
       },
-    ],
-  };
-
-  const bookings = await Booking.paginate(query, options);
-  sendResponse(res, 200, bookings, "User bookings retrieved successfully");
-});
-
-/**
- * @desc Get single booking
- * @route GET /api/bookings/:id
- * @access Private
- */
-const getBookingById = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id)
-    .populate("userId", "name email")
-    .populate("fieldId", "name pricePerHour")
-    .populate({
-      path: "fieldId",
-      populate: {
-        path: "sport",
-        select: "sportName",
-      },
+      message: "Booking berhasil dibuat dengan ID: " + booking._id + " (menunggu verifikasi admin)",
     });
-
-  if (!booking) {
-    return sendResponse(res, 404, null, "", "Booking not found");
+  } catch (error) {
+    console.log("Error creating booking:", error);
+    return res.status(500).json({ status: 500, message: "Kesalahan server internal" });
   }
+};
 
-  // Check if user owns this booking or is admin
-  if (booking.userId._id.toString() !== req.user._id.toString() && req.user.role !== "admin") {
-    return sendResponse(res, 403, null, "", "Not authorized to access this booking");
+// ✅ Get semua booking user
+export const getUserBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ userId: req.user.id }).populate("fieldId", "name sport pricePerHour");
+    return res.status(200).json({
+      status: 200,
+      data: bookings,
+      message: "Daftar booking berhasil diambil",
+    });
+  } catch (error) {
+    console.log("Error getting user bookings:", error);
+    return res.status(500).json({ status: 500, message: "Kesalahan server internal" });
   }
+};
 
-  sendResponse(res, 200, booking, "Booking retrieved successfully");
-});
+// ✅ Get booking by ID
+export const getBookingById = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate("fieldId", "name pricePerHour sport");
 
-/**
- * @desc Cancel booking
- * @route PUT /api/bookings/:id/cancel
- * @access Private
- */
-const cancelBooking = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id);
-
-  if (!booking) {
-    return sendResponse(res, 404, null, "", "Booking not found");
-  }
-
-  // Check if user owns this booking
-  if (booking.userId.toString() !== req.user._id.toString()) {
-    return sendResponse(res, 403, null, "", "Not authorized to cancel this booking");
-  }
-
-  // Check if booking can be cancelled
-  if (booking.status !== "active") {
-    return sendResponse(res, 400, null, "", "Only active bookings can be cancelled");
-  }
-
-  // Check if booking is not too close to start time (e.g., 2 hours before)
-  const bookingDateTime = new Date(booking.date);
-  const [hours, minutes] = booking.startTime.split(":");
-  bookingDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-  const now = new Date();
-  const timeDiff = bookingDateTime.getTime() - now.getTime();
-  const hoursDiff = timeDiff / (1000 * 60 * 60);
-
-  if (hoursDiff < 2) {
-    return sendResponse(res, 400, null, "", "Cannot cancel booking less than 2 hours before start time");
-  }
-
-  booking.status = "cancelled";
-  await booking.save();
-
-  sendResponse(res, 200, booking, "Booking cancelled successfully");
-});
-
-/**
- * @desc Upload proof of payment
- * @route POST /api/bookings/:id/upload-proof
- * @access Private
- */
-const uploadProofOfPayment = asyncHandler(async (req, res) => {
-  const booking = await Booking.findById(req.params.id);
-
-  if (!booking) {
-    return sendResponse(res, 404, null, "", "Booking not found");
-  }
-
-  // Check if user owns this booking
-  if (booking.userId.toString() !== req.user._id.toString()) {
-    return sendResponse(res, 403, null, "", "Not authorized to upload proof for this booking");
-  }
-
-  // Check if booking payment method is transfer
-  if (booking.paymentMethod !== "transfer") {
-    return sendResponse(res, 400, null, "", "Proof of payment only required for transfer payments");
-  }
-
-  // Use multer middleware to handle file upload
-  upload.single("proofFile")(req, res, async (err) => {
-    if (err) {
-      return sendResponse(res, 400, null, "", err.message);
+    if (!booking) {
+      return res.status(404).json({
+        status: 404,
+        message: "Booking tidak ditemukan",
+      });
     }
 
-    if (!req.file) {
-      return sendResponse(res, 400, null, "", "Please upload a proof of payment file");
+    // cek kepemilikan booking
+    if (booking.userId && booking.userId.toString() !== req.user.id && !req.user.role) {
+      return res.status(403).json({
+        status: 403,
+        message: "Tidak diizinkan",
+      });
     }
 
-    // Update booking with proof of payment URL
-    booking.proofOfPayment = req.file.path; // Cloudinary URL
-    booking.paymentStatus = "pending"; // Admin needs to verify
+    return res.status(200).json({
+      status: 200,
+      data: booking,
+      message: "Detail booking berhasil diambil",
+    });
+  } catch (error) {
+    console.error("Error getBookingById:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "Kesalahan server internal",
+      error: error.message,
+    });
+  }
+};
+
+// ✅ Cancel booking (user)
+export const cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ status: 404, message: "Booking tidak ditemukan" });
+
+    console.log("Booking.userId:", booking.userId);
+    console.log("Req.user.id:", req.user.id);
+
+    if (!booking.userId) {
+      return res.status(400).json({ status: 400, message: "Booking ini tidak punya userId" });
+    }
+
+    if (booking.userId.toString() !== req.user.id) {
+      return res.status(403).json({ status: 403, message: "Tidak diizinkan" });
+    }
+
+    booking.status = "cancelled";
     await booking.save();
 
-    sendResponse(
-      res,
-      200,
-      {
-        proofOfPayment: booking.proofOfPayment,
-        paymentStatus: booking.paymentStatus,
-      },
-      "Proof of payment uploaded successfully"
-    );
-  });
-});
+    // Populate untuk response yang lengkap
+    const cancelledBooking = await Booking.findById(booking._id).populate("userId", "name email").populate("fieldId", "name sport pricePerHour");
 
-/**
- * @desc Get all bookings (Admin only)
- * @route GET /api/bookings/admin/all
- * @access Private/Admin
- */
-const getAllBookings = asyncHandler(async (req, res) => {
-  const { status, paymentStatus, page = 1, limit = 10 } = req.query;
-
-  const query = {};
-  if (status) query.status = status;
-  if (paymentStatus) query.paymentStatus = paymentStatus;
-
-  const options = {
-    page: parseInt(page),
-    limit: parseInt(limit),
-    sort: { createdAt: -1 },
-    populate: [
-      {
-        path: "userId",
-        select: "name email",
-      },
-      {
-        path: "fieldId",
-        select: "name pricePerHour",
-        populate: {
-          path: "sport",
-          select: "sportName",
+    return res.status(200).json({
+      status: 200,
+      data: {
+        bookingId: booking._id,
+        booking: cancelledBooking,
+        statusUpdate: {
+          status: booking.status,
+          cancelledAt: new Date(),
         },
       },
-    ],
-  };
-
-  const bookings = await Booking.paginate(query, options);
-  sendResponse(res, 200, bookings, "All bookings retrieved successfully");
-});
-
-/**
- * @desc Update payment status (Admin only)
- * @route PUT /api/bookings/:id/payment-status
- * @access Private/Admin
- */
-const updatePaymentStatus = asyncHandler(async (req, res) => {
-  const { paymentStatus } = req.body;
-
-  if (!["pending", "paid", "failed"].includes(paymentStatus)) {
-    return sendResponse(res, 400, null, "", "Invalid payment status");
+      message: `Booking ${booking._id} berhasil dibatalkan`,
+    });
+  } catch (error) {
+    console.error("Error cancelling booking:", error);
+    return res.status(500).json({ status: 500, message: "Kesalahan server internal" });
   }
+};
 
-  const booking = await Booking.findById(req.params.id);
+// ✅ Admin - get semua booking
+export const getAllBookings = async (req, res) => {
+  try {
+    if (!req.user.role) {
+      return res.status(403).json({ status: 403, message: "Hanya admin" });
+    }
 
-  if (!booking) {
-    return sendResponse(res, 404, null, "", "Booking not found");
+    const bookings = await Booking.find().populate("userId", "name email").populate("fieldId", "name pricePerHour sport").sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      status: 200,
+      data: bookings,
+      message: "Semua booking berhasil diambil",
+    });
+  } catch (error) {
+    console.log("Error getting all bookings:", error);
+    return res.status(500).json({ status: 500, message: "Kesalahan server internal" });
   }
+};
 
-  booking.paymentStatus = paymentStatus;
-  await booking.save();
+// ✅ Admin - update payment status
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    if (!req.user.role) {
+      return res.status(403).json({ status: 403, message: "Hanya admin" });
+    }
 
-  sendResponse(res, 200, booking, "Payment status updated successfully");
-});
+    const { paymentStatus } = req.body;
+    if (!["pending", "paid", "failed"].includes(paymentStatus)) {
+      return res.status(400).json({ status: 400, message: "Status tidak valid" });
+    }
 
-module.exports = {
-  createBooking,
-  getUserBookings,
-  getBookingById,
-  cancelBooking,
-  uploadProofOfPayment,
-  getAllBookings,
-  updatePaymentStatus,
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ status: 404, message: "Booking tidak ditemukan" });
+
+    booking.paymentStatus = paymentStatus;
+    booking.status = paymentStatus === "paid" ? "active" : "cancelled";
+    await booking.save();
+
+    // Populate untuk response yang lengkap
+    const updatedBooking = await Booking.findById(booking._id).populate("userId", "name email").populate("fieldId", "name sport pricePerHour");
+
+    return res.status(200).json({
+      status: 200,
+      data: {
+        bookingId: booking._id,
+        booking: updatedBooking,
+        statusUpdate: {
+          paymentStatus: booking.paymentStatus,
+          bookingStatus: booking.status,
+        },
+      },
+      message: `Status pembayaran booking ${booking._id} berhasil diubah menjadi ${paymentStatus}`,
+    });
+  } catch (error) {
+    console.log("Error updating payment status:", error);
+    return res.status(500).json({ status: 500, message: "Kesalahan server internal" });
+  }
 };

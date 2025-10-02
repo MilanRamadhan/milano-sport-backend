@@ -23,6 +23,22 @@ const Auth = new mongoose.Schema(
       type: String,
       default: null,
     },
+    phone: {
+      type: String,
+      default: "",
+    },
+    address: {
+      type: String,
+      default: "",
+    },
+    birthDate: {
+      type: String,
+      default: "",
+    },
+    profileImage: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
