@@ -41,20 +41,11 @@ export async function connectDB() {
 
 // Route test
 app.get("/", (req, res) => {
-  return res.status(200).json({ status: 200, message: "hello" });
-});
-
-// API info endpoint
-app.get("/api", (req, res) => {
   return res.status(200).json({
     status: 200,
-    message: "MilanoSport API",
+    message: "MilanoSport API is running",
     version: "1.0.0",
-    endpoints: {
-      auth: ["POST /api/auth/register", "POST /api/auth/login"],
-      fields: ["GET /api/fields", "GET /api/fields/:id", "GET /api/fields/sport/:sportName", "GET /api/fields/:id/availability/:date"],
-      bookings: ["POST /api/bookings", "GET /api/bookings/me", "GET /api/bookings/:id", "PATCH /api/bookings/:id/cancel", "GET /api/bookings (admin)", "PATCH /api/bookings/:id/payment (admin)"],
-    },
+    documentation: "https://github.com/muhammadsyukri19/milanosport-backend",
   });
 });
 
