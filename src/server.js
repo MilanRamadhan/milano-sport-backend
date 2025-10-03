@@ -10,6 +10,7 @@ dotenv.config(); // Load environment variables from .env file
 
 const app = express();
 const port = process.env.PORT || 5000;
+const host = "0.0.0.0";
 
 app.use(cors());
 // Increase payload limit to 50MB for image uploads
@@ -47,8 +48,9 @@ app.use("/api/fields", fieldRouter); // Changed from "/api/" to "/api/fields"
 // Start server setelah DB connect
 connectDB()
   .then(() => {
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
+    app.listen(port, host, () => {
+      console.log(`Server running on http://${host}:${port}`);
+      console.log(`Access from other devices: http://192.168.1.60:${port}`);
     });
   })
   .catch(console.dir);
