@@ -12,7 +12,12 @@ export const app = express(); // <-- diekspor
 const port = process.env.PORT || 5000;
 const host = "0.0.0.0";
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:8080", process.env.FRONTEND_URL],
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
