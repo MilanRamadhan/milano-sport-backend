@@ -1,24 +1,43 @@
-/**
- * Simple logging utility
- */
-const logger = {
+import fs from "fs";
+import path from "path";
+
+// pastikan folder logs ada
+const logDir = path.join(process.cwd(), "logs");
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir);
+}
+
+const logToFile = (filename, message) => {
+  const filePath = path.join(logDir, filename);
+  fs.appendFileSync(filePath, message + "\n", "utf8");
+};
+
+const formatLog = (level, message) => `[${level}] ${new Date().toISOString()} - ${message}`;
+
+export const logger = {
   info: (message) => {
-    console.log(`[INFO] ${new Date().toISOString()}: ${message}`);
+    const log = formatLog("INFO", message);
+    console.log(log);
+    logToFile("app.log", log);
   },
 
   warn: (message) => {
-    console.warn(`[WARN] ${new Date().toISOString()}: ${message}`);
+    const log = formatLog("WARN", message);
+    console.warn(log);
+    logToFile("app.log", log);
   },
 
   error: (message) => {
-    console.error(`[ERROR] ${new Date().toISOString()}: ${message}`);
+    const log = formatLog("ERROR", message);
+    console.error(log);
+    logToFile("error.log", log);
   },
 
   debug: (message) => {
     if (process.env.NODE_ENV === "development") {
-      console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
+      const log = formatLog("DEBUG", message);
+      console.log(log);
+      logToFile("debug.log", log);
     }
   },
 };
-
-module.exports = { logger };

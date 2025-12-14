@@ -1,10 +1,13 @@
 import Field from "../models/Field.js";
 import Booking from "../models/Booking.js";
+import { logger } from "../utils/logger.js";
 
 // Ambil semua lapangan aktif
 export const getFields = async (req, res) => {
   try {
     const fields = await Field.find({ isActive: true });
+
+    logger.info(`Get fields | count=${fields.length}`);
 
     return res.status(200).json({
       status: 200,
@@ -12,7 +15,7 @@ export const getFields = async (req, res) => {
       message: "Daftar lapangan berhasil diambil",
     });
   } catch (error) {
-    console.log("Error getting fields:", error);
+    logger.error(`Error getFields: ${error.message}`);
     return res.status(500).json({
       status: 500,
       message: "Kesalahan server internal",
@@ -25,18 +28,20 @@ export const getFieldsBySport = async (req, res) => {
   try {
     const { sportName } = req.params;
 
-    // Cari fields berdasarkan sport enum
     const fields = await Field.find({
       sport: sportName,
       isActive: true,
     });
 
     if (!fields || fields.length === 0) {
+      logger.warn(`Get fields by sport not found | sport=${sportName}`);
       return res.status(404).json({
         status: 404,
         message: `Lapangan untuk ${sportName} tidak ditemukan`,
       });
     }
+
+    logger.info(`Get fields by sport | sport=${sportName} count=${fields.length}`);
 
     return res.status(200).json({
       status: 200,
@@ -44,7 +49,7 @@ export const getFieldsBySport = async (req, res) => {
       message: `Lapangan untuk ${sportName} berhasil diambil`,
     });
   } catch (error) {
-    console.log("Error getting fields by sport:", error);
+    logger.error(`Error getFieldsBySport (${req.params.sportName}): ${error.message}`);
     return res.status(500).json({
       status: 500,
       message: "Kesalahan server internal",
@@ -58,11 +63,14 @@ export const getFieldById = async (req, res) => {
     const field = await Field.findById(req.params.id);
 
     if (!field || !field.isActive) {
+      logger.warn(`Get field by id not found | fieldId=${req.params.id}`);
       return res.status(404).json({
         status: 404,
         message: "Lapangan tidak ditemukan",
       });
     }
+
+    logger.info(`Get field by id | fieldId=${field._id} name=${field.name}`);
 
     return res.status(200).json({
       status: 200,
@@ -70,7 +78,7 @@ export const getFieldById = async (req, res) => {
       message: "Detail lapangan berhasil diambil",
     });
   } catch (error) {
-    console.log("Error getting field by ID:", error);
+    logger.error(`Error getFieldById (${req.params.id}): ${error.message}`);
     return res.status(500).json({
       status: 500,
       message: "Kesalahan server internal",
@@ -83,22 +91,21 @@ export const getFieldAvailability = async (req, res) => {
   try {
     const { id, date } = req.params;
 
-    // Validasi field exists
     const field = await Field.findById(id);
     if (!field || !field.isActive) {
+      logger.warn(`Get availability field not found | fieldId=${id}`);
       return res.status(404).json({
         status: 404,
         message: "Lapangan tidak ditemukan",
       });
     }
 
-    // Parse date
     const bookingDate = new Date(date);
     const dayOfWeek = bookingDate.getDay();
 
-    // Cek availability untuk hari tersebut
     const dayAvailability = field.availability.find((av) => av.dayOfWeek === dayOfWeek);
     if (!dayAvailability) {
+      logger.info(`Field closed | fieldId=${id} date=${date} day=${dayOfWeek}`);
       return res.status(200).json({
         status: 200,
         data: {
@@ -109,7 +116,6 @@ export const getFieldAvailability = async (req, res) => {
       });
     }
 
-    // Cari booking yang sudah ada untuk tanggal tersebut
     const existingBookings = await Booking.find({
       fieldId: id,
       date: {
@@ -119,27 +125,24 @@ export const getFieldAvailability = async (req, res) => {
       status: "active",
     }).select("startTime endTime");
 
-    // Generate available time slots
-    const openTime = dayAvailability.openTime;
-    const closeTime = dayAvailability.closeTime;
-    const bookedSlots = existingBookings.map((booking) => ({
-      start: booking.startTime,
-      end: booking.endTime,
-    }));
+    logger.info(`Get availability | field=${id} date=${date} open=${dayAvailability.openTime} close=${dayAvailability.closeTime} booked=${existingBookings.length}`);
 
     return res.status(200).json({
       status: 200,
       data: {
         available: true,
-        openTime,
-        closeTime,
-        bookedSlots,
-        date: date,
+        openTime: dayAvailability.openTime,
+        closeTime: dayAvailability.closeTime,
+        bookedSlots: existingBookings.map((b) => ({
+          start: b.startTime,
+          end: b.endTime,
+        })),
+        date,
       },
       message: "Ketersediaan lapangan berhasil diambil",
     });
   } catch (error) {
-    console.log("Error getting field availability:", error);
+    logger.error(`Error getFieldAvailability: ${error.message}`);
     return res.status(500).json({
       status: 500,
       message: "Kesalahan server internal",
