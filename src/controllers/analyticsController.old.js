@@ -4,24 +4,24 @@ import Finance from "../models/Finance.js";
 import Field from "../models/Field.js";
 import { logger } from "../utils/logger.js";
 
-// Get analytics dashboard data - OPTIMIZED VERSION
+// Get analytics dashboard data
 export const getAnalytics = async (req, res) => {
   try {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    // Run all queries in parallel for maximum speed
+    // Run all queries in parallel for speed
     const [
       totalUsers,
       totalBookings,
       revenueData,
       bookingsByStatus,
       revenueByMonth,
-      topFieldsAgg,
+      topFields,
       paymentDistribution,
       popularTimeSlots,
       userActivity,
-      financeStats
+      financeData
     ] = await Promise.all([
       // 1. Total Users
       Auth.countDocuments({ role: false }),
@@ -62,7 +62,7 @@ export const getAnalytics = async (req, res) => {
         { $limit: 6 }
       ]),
       
-      // 6. Top Fields (get fieldId and stats)
+      // 6. Top Fields (simplified - just count bookings)
       Booking.aggregate([
         { $match: { paymentStatus: "paid" } },
         {
@@ -132,39 +132,164 @@ export const getAnalytics = async (req, res) => {
       ])
     ]);
 
-    // Process results
     const totalRevenue = revenueData[0]?.total || 0;
+
+    // 2. Bookings by Status
+    const bookingsByStatus = await Booking.aggregate([
+      {
+        $match: hasDateFilter ? { createdAt: dateFilter } : {},
+      },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // 3. Revenue by Month (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const revenueByMonth = await Booking.aggregate([
+      {
+        $match: {
+          paymentStatus: "paid",
+          createdAt: { $gte: sixMonthsAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          revenue: { $sum: "$totalPrice" },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
+    ]);
 
     // Format month names
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
     const formattedRevenueByMonth = revenueByMonth.map((item) => ({
       month: `${monthNames[item._id.month - 1]} ${item._id.year}`,
       revenue: item.revenue,
       bookings: item.count,
     }));
 
-    // Fetch field details for top fields (only 5 fields, very fast)
-    const fieldIds = topFieldsAgg.map(f => f._id);
-    const fields = await Field.find({ _id: { $in: fieldIds } }).select('name sport').lean();
-    
-    const topFields = topFieldsAgg.map((item) => {
-      const field = fields.find(f => f._id.toString() === item._id.toString());
-      return {
-        _id: item._id,
-        fieldName: field?.name || "Unknown Field",
-        sport: field?.sport || "Unknown",
-        bookings: item.bookings,
-        revenue: item.revenue
-      };
-    });
+    // 4. Top Fields by Revenue
+    const topFields = await Booking.aggregate([
+      {
+        $match: {
+          paymentStatus: "paid",
+          ...(hasDateFilter ? { createdAt: dateFilter } : {}),
+        },
+      },
+      {
+        $lookup: {
+          from: "fields",
+          localField: "fieldId",
+          foreignField: "_id",
+          as: "field",
+        },
+      },
+      {
+        $unwind: "$field",
+      },
+      {
+        $group: {
+          _id: "$fieldId",
+          fieldName: { $first: "$field.name" },
+          sport: { $first: "$field.sport" },
+          bookings: { $sum: 1 },
+          revenue: { $sum: "$totalPrice" },
+        },
+      },
+      {
+        $sort: { revenue: -1 },
+      },
+      {
+        $limit: 5,
+      },
+    ]);
+
+    // 5. Payment Status Distribution
+    const paymentDistribution = await Booking.aggregate([
+      {
+        $match: hasDateFilter ? { createdAt: dateFilter } : {},
+      },
+      {
+        $group: {
+          _id: "$paymentStatus",
+          count: { $sum: 1 },
+          totalAmount: { $sum: "$totalPrice" },
+        },
+      },
+    ]);
+
+    // 6. Popular Time Slots
+    const popularTimeSlots = await Booking.aggregate([
+      {
+        $match: hasDateFilter ? { createdAt: dateFilter } : {},
+      },
+      {
+        $group: {
+          _id: {
+            $concat: ["$startTime", " - ", "$endTime"],
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { count: -1 },
+      },
+      {
+        $limit: 10,
+      },
+    ]);
+
+    // 7. User Activity (New users per month)
+    const userActivity = await Auth.aggregate([
+      {
+        $match: {
+          role: false,
+          createdAt: { $gte: sixMonthsAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
+    ]);
 
     const formattedUserActivity = userActivity.map((item) => ({
       month: `${monthNames[item._id.month - 1]} ${item._id.year}`,
-      users: item.users,
+      users: item.count,
     }));
 
-    // Finance Summary
+    // 8. Finance Summary
+    const financeStats = await Finance.aggregate([
+      {
+        $group: {
+          _id: "$type",
+          total: { $sum: "$amount" },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
     const income = financeStats.find((s) => s._id === "income");
     const expense = financeStats.find((s) => s._id === "expense");
 
@@ -176,7 +301,7 @@ export const getAnalytics = async (req, res) => {
       expenseCount: expense?.count || 0,
     };
 
-    logger.info(`Analytics data retrieved | admin=${req.user?.id || 'unknown'}`);
+    logger.info(`Analytics data retrieved | admin=${req.user.id} period=${from || "all"} to ${to || "now"}`);
 
     return res.status(200).json({
       status: 200,
