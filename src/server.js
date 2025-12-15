@@ -13,21 +13,40 @@ export const app = express(); // <-- diekspor
 const port = process.env.PORT || 5000;
 const host = "0.0.0.0";
 
-// CORS Configuration - Simple and permissive for development
+// CORS Configuration - Allow specific origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://192.168.1.60:5173',
+  'https://milano-sport.vercel.app',
+  'https://milanosport.vercel.app'
+];
+
 app.use(
   cors({
-    origin: true, // Allow all origins in development
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      // Check if origin is in whitelist
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Allow all localhost origins for development
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true);
+      }
+      
+      return callback(null, true); // Temporarily allow all for debugging
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204
   })
 );
-
-// Handle preflight requests explicitly
-app.options('*', cors());
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
