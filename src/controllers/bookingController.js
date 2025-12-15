@@ -276,11 +276,33 @@ export const getAllBookings = async (req, res) => {
       return res.status(403).json({ status: 403, message: "Hanya admin" });
     }
 
-    const bookings = await Booking.find().populate("userId", "name email").populate("fieldId", "name pricePerHour sport").sort({ createdAt: -1 });
-    logger.info(`Admin getAllBookings | admin=${req.user?.id} count=${bookings.length}`);
+    // Add pagination and limit untuk avoid timeout
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 100; // Default 100 bookings
+    const skip = (page - 1) * limit;
+
+    // Use lean() untuk faster query tanpa Mongoose document overhead
+    const [bookings, total] = await Promise.all([
+      Booking.find()
+        .populate("userId", "name email")
+        .populate("fieldId", "name pricePerHour sport")
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean(),
+      Booking.countDocuments()
+    ]);
+
+    logger.info(`Admin getAllBookings | admin=${req.user?.id} count=${bookings.length} page=${page}`);
     return res.status(200).json({
       status: 200,
       data: bookings,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      },
       message: "Semua booking berhasil diambil",
     });
   } catch (error) {
