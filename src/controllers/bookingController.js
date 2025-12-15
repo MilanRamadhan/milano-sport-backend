@@ -1,6 +1,29 @@
 import Booking from "../models/Booking.js";
 import Field from "../models/Field.js";
+import Finance from "../models/Finance.js";
 import { logger } from "../utils/logger.js";
+
+// Helper: Auto-create finance record dari booking
+const createFinanceFromBooking = async (booking, adminId) => {
+  try {
+    const populatedBooking = await Booking.findById(booking._id).populate("userId", "name").populate("fieldId", "name sport");
+
+    const financeRecord = await Finance.create({
+      type: "income",
+      category: `Booking ${populatedBooking.fieldId.sport}`,
+      amount: booking.totalPrice,
+      description: `Booking ${populatedBooking.fieldId.name} oleh ${populatedBooking.userId.name} - ${booking.date.toLocaleDateString("id-ID")} (${booking.startTime}-${booking.endTime})`,
+      date: booking.date,
+      createdBy: adminId,
+    });
+
+    logger.info(`Finance auto-created from booking | financeId=${financeRecord._id} bookingId=${booking._id} amount=${booking.totalPrice}`);
+    return financeRecord;
+  } catch (error) {
+    logger.error(`Error creating finance from booking: ${error.message}`);
+    // Don't throw error, just log it so booking process continues
+  }
+};
 
 // ✅ Cek konflik booking
 const checkBookingConflict = async (fieldId, date, startTime, endTime, excludeBookingId = null) => {
@@ -266,6 +289,79 @@ export const getAllBookings = async (req, res) => {
   }
 };
 
+// ✅ Admin - sync existing paid bookings to finance
+export const syncBookingsToFinance = async (req, res) => {
+  try {
+    if (!req.user.role) {
+      logger.warn(`Admin syncBookingsToFinance forbidden | user=${req.user?.id}`);
+      return res.status(403).json({ status: 403, message: "Hanya admin" });
+    }
+
+    // Get all paid bookings
+    const paidBookings = await Booking.find({
+      paymentStatus: "paid",
+      status: { $in: ["active", "completed"] },
+    })
+      .populate("userId", "name")
+      .populate("fieldId", "name sport");
+
+    let syncedCount = 0;
+    let skippedCount = 0;
+    const errors = [];
+
+    for (const booking of paidBookings) {
+      try {
+        // Check if finance record already exists for this booking
+        const existingFinance = await Finance.findOne({
+          description: { $regex: booking._id.toString() },
+        });
+
+        if (existingFinance) {
+          skippedCount++;
+          continue;
+        }
+
+        // Create finance record
+        await Finance.create({
+          type: "income",
+          category: `Booking ${booking.fieldId.sport}`,
+          amount: booking.totalPrice,
+          description: `Booking ${booking.fieldId.name} oleh ${booking.userId.name} - ${booking.date.toLocaleDateString("id-ID")} (${booking.startTime}-${booking.endTime}) [ID: ${booking._id}]`,
+          date: booking.date,
+          createdBy: req.user.id,
+        });
+
+        syncedCount++;
+        logger.info(`Booking synced to finance | bookingId=${booking._id} amount=${booking.totalPrice}`);
+      } catch (error) {
+        errors.push({ bookingId: booking._id, error: error.message });
+        logger.error(`Error syncing booking ${booking._id}: ${error.message}`);
+      }
+    }
+
+    logger.info(`Booking sync completed | admin=${req.user?.id} synced=${syncedCount} skipped=${skippedCount} errors=${errors.length}`);
+
+    return res.status(200).json({
+      status: 200,
+      data: {
+        totalPaidBookings: paidBookings.length,
+        syncedCount,
+        skippedCount,
+        errorCount: errors.length,
+        errors: errors.length > 0 ? errors : undefined,
+      },
+      message: `Berhasil sync ${syncedCount} booking ke finance records. ${skippedCount} sudah ada sebelumnya.`,
+    });
+  } catch (error) {
+    logger.error(`Error syncing bookings to finance: ${error.message}`);
+    return res.status(500).json({
+      status: 500,
+      message: "Kesalahan server saat sync bookings",
+      error: error.message,
+    });
+  }
+};
+
 // ✅ Admin - update payment status
 export const updatePaymentStatus = async (req, res) => {
   try {
@@ -283,9 +379,15 @@ export const updatePaymentStatus = async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ status: 404, message: "Booking tidak ditemukan" });
 
+    const oldPaymentStatus = booking.paymentStatus;
     booking.paymentStatus = paymentStatus;
     booking.status = paymentStatus === "paid" ? "active" : "cancelled";
     await booking.save();
+
+    // Auto-create finance record when payment is confirmed (paid)
+    if (paymentStatus === "paid" && oldPaymentStatus !== "paid") {
+      await createFinanceFromBooking(booking, req.user.id);
+    }
 
     // Populate untuk response yang lengkap
     const updatedBooking = await Booking.findById(booking._id).populate("userId", "name email").populate("fieldId", "name sport pricePerHour");

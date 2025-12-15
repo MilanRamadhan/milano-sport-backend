@@ -1,0 +1,6 @@
+[ERROR] 2025-12-15T12:34:27.385Z - Error syncing booking 68ded617492386b25cdc63e8: Cannot read properties of null (reading 'sport')
+[ERROR] 2025-12-15T12:34:27.434Z - Error syncing booking 68ded9dd8342a689213d76e5: Cannot read properties of null (reading 'sport')
+[ERROR] 2025-12-15T12:34:27.491Z - Error syncing booking 68dede238342a689213d7a09: Cannot read properties of null (reading 'sport')
+[ERROR] 2025-12-15T12:34:27.545Z - Error syncing booking 68e0a9377ec2a22ae46c5b65: Cannot read properties of null (reading 'sport')
+[ERROR] 2025-12-15T12:34:27.599Z - Error syncing booking 68e0abd73bdf918c163f6544: Cannot read properties of null (reading 'sport')
+[ERROR] 2025-12-15T12:34:27.676Z - Error syncing booking 68e617ea3aa0d3b14794eccc: Cannot read properties of null (reading 'sport')

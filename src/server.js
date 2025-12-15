@@ -6,6 +6,8 @@ import authRouter from "./routes/authRouter.js";
 import bookingRouter from "./routes/bookingRoutes.js";
 import fieldRouter from "./routes/fieldRoutes.js";
 import adminRouter from "./routes/adminRoutes.js";
+import financeRouter from "./routes/financeRoutes.js";
+import analyticsRouter from "./routes/analyticsRoutes.js";
 
 dotenv.config();
 
@@ -14,13 +16,7 @@ const port = process.env.PORT || 5000;
 const host = "0.0.0.0";
 
 // CORS Configuration - Allow specific origins
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:8080',
-  'http://192.168.1.60:5173',
-  'https://milano-sport.vercel.app',
-  'https://milanosport.vercel.app'
-];
+const allowedOrigins = ["http://localhost:5173", "http://localhost:8080", "http://192.168.1.60:5173", "https://milano-sport.vercel.app", "https://milanosport.vercel.app"];
 
 app.use(
   cors({
@@ -29,22 +25,22 @@ app.use(
       if (!origin) {
         return callback(null, true);
       }
-      
+
       // Check if origin is in whitelist
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      
+
       // Allow all localhost origins for development
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+      if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
         return callback(null, true);
       }
-      
+
       return callback(null, true); // Temporarily allow all for debugging
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
 
@@ -89,6 +85,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/bookings", bookingRouter);
 app.use("/api/fields", fieldRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/admin/finance", financeRouter);
+app.use("/api/admin/analytics", analyticsRouter);
 
 // HANYA LISTEN saat TIDAK di Vercel (untuk lokal dev)
 if (!process.env.VERCEL) {

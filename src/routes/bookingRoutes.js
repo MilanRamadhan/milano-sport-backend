@@ -1,5 +1,5 @@
 import express from "express";
-import { createBooking, getUserBookings, getBookingById, cancelBooking, getAllBookings, updatePaymentStatus } from "../controllers/bookingController.js";
+import { createBooking, getUserBookings, getBookingById, cancelBooking, getAllBookings, updatePaymentStatus, syncBookingsToFinance } from "../controllers/bookingController.js";
 import { verifyToken } from "../middleware/auth.js";
 import { upload } from "../config/cloudinary.js";
 
@@ -14,5 +14,6 @@ router.patch("/:id/cancel", verifyToken, cancelBooking);
 // Admin
 router.get("/", verifyToken, getAllBookings);
 router.patch("/:id/payment", verifyToken, updatePaymentStatus);
+router.post("/sync-to-finance", verifyToken, syncBookingsToFinance);
 
 export default router;

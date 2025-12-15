@@ -1,0 +1,73 @@
+[INFO] 2025-12-15T10:12:57.839Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:12:57.995Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:13:22.818Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:13:22.972Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:13:30.113Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:13:30.267Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:20:57.646Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:20:57.795Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:21:23.734Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:21:23.905Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:24:14.820Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:24:15.000Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:33:33.326Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:33:33.485Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:46:10.021Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:46:16.849Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:46:17.000Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T10:46:26.747Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=31
+[INFO] 2025-12-15T12:20:51.804Z - Get fields | count=4
+[INFO] 2025-12-15T12:20:51.900Z - Get fields | count=4
+[INFO] 2025-12-15T12:20:54.651Z - Get fields | count=4
+[INFO] 2025-12-15T12:20:54.762Z - Get fields | count=4
+[INFO] 2025-12-15T12:20:57.062Z - Get availability | field=68e629be558a6c4a50b11a8e date=2025-12-16 open=08:00 close=23:59 booked=0
+[INFO] 2025-12-15T12:22:29.047Z - Booking created | bookingId=693ffd8471a538480f60edd1 user=68dddea4784d8104d58f2a02 field=68e629be558a6c4a50b11a8e date=2025-12-16 time=09:00-10:00 total=200000
+[INFO] 2025-12-15T12:22:31.628Z - Get fields | count=4
+[INFO] 2025-12-15T12:22:31.800Z - Get fields | count=4
+[INFO] 2025-12-15T12:23:51.726Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:23:52.445Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:24:15.822Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:24:16.305Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:24:25.495Z - Finance auto-created from booking | financeId=693ffdf871a538480f60ee34 bookingId=693ffd8471a538480f60edd1 amount=200000
+[INFO] 2025-12-15T12:24:25.732Z - Payment status updated | admin=68ddddf0784d8104d58f29f7 bookingId=693ffd8471a538480f60edd1 paymentStatus=paid bookingStatus=active
+[INFO] 2025-12-15T12:24:31.529Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:34:27.813Z - Booking synced to finance | bookingId=68e62d1c123d2c123493db57 amount=150000
+[INFO] 2025-12-15T12:34:27.923Z - Booking synced to finance | bookingId=68e919d80f820ff6afbc41ab amount=100000
+[INFO] 2025-12-15T12:34:28.032Z - Booking synced to finance | bookingId=68eb8a7018c1d5162bf928bb amount=200000
+[INFO] 2025-12-15T12:34:28.158Z - Booking synced to finance | bookingId=68f2835c4ef3c8c699cc2aea amount=200000
+[INFO] 2025-12-15T12:34:28.388Z - Booking synced to finance | bookingId=68fa3600aa9ea4641c4d209b amount=200000
+[INFO] 2025-12-15T12:34:28.541Z - Booking synced to finance | bookingId=69245bf54602578f145a7654 amount=200000
+[INFO] 2025-12-15T12:34:28.682Z - Booking synced to finance | bookingId=693ffd8471a538480f60edd1 amount=200000
+[INFO] 2025-12-15T12:34:28.682Z - Booking sync completed | admin=68ddddf0784d8104d58f29f7 synced=7 skipped=0 errors=6
+[INFO] 2025-12-15T12:36:21.360Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:36:23.933Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:53:01.858Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:53:02.421Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:53:08.025Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:53:08.564Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:53:29.498Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:53:30.141Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:54:41.409Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:54:42.372Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:55:33.462Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:55:33.719Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T12:55:38.777Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T12:55:39.810Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:15:22.884Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:15:23.982Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:15:36.366Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:15:37.600Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:17:07.358Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:17:08.101Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:30:05.451Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:30:06.209Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:34:33.303Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T13:34:33.526Z - Admin getAllBookings | admin=68ddddf0784d8104d58f29f7 count=32
+[INFO] 2025-12-15T13:34:41.747Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:34:42.488Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:35:51.498Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:35:52.304Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:42:25.385Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:42:26.406Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:45:07.913Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
+[INFO] 2025-12-15T13:45:09.203Z - Analytics data retrieved | admin=68ddddf0784d8104d58f29f7 period=all to now
