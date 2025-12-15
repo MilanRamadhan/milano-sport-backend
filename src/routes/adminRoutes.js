@@ -1,14 +1,5 @@
 import express from "express";
-import { 
-  getAllUsers, 
-  getUserById, 
-  updateUserRole, 
-  deleteUser,
-  getAllBookings,
-  updateBookingStatus,
-  deleteBooking,
-  getDashboardStats
-} from "../controllers/adminController.js";
+import { getAllUsers, getUserById, updateUserRole, deleteUser, getAllBookings, updateBookingStatus, deleteBooking, getDashboardStats } from "../controllers/adminController.js";
 import { verifyToken, isAdmin } from "../middleware/auth.js";
 
 const adminRouter = express.Router();

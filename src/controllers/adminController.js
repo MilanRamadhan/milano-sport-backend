@@ -6,7 +6,7 @@ import Field from "../models/Field.js";
 export const getAllUsers = async (req, res) => {
   try {
     const users = await Auth.find().select("-password").sort({ createdAt: -1 });
-    
+
     return res.status(200).json({
       status: 200,
       data: users,
@@ -26,7 +26,7 @@ export const getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await Auth.findById(userId).select("-password");
-    
+
     if (!user) {
       return res.status(404).json({
         status: 404,
@@ -61,11 +61,7 @@ export const updateUserRole = async (req, res) => {
       });
     }
 
-    const user = await Auth.findByIdAndUpdate(
-      userId,
-      { role },
-      { new: true }
-    ).select("-password");
+    const user = await Auth.findByIdAndUpdate(userId, { role }, { new: true }).select("-password");
 
     if (!user) {
       return res.status(404).json({
@@ -129,10 +125,7 @@ export const deleteUser = async (req, res) => {
 // Get all bookings
 export const getAllBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find()
-      .populate("userId", "name email")
-      .populate("fieldId", "name category")
-      .sort({ bookingDate: -1 });
+    const bookings = await Booking.find().populate("userId", "name email").populate("fieldId", "name category").sort({ bookingDate: -1 });
 
     return res.status(200).json({
       status: 200,
@@ -169,13 +162,7 @@ export const updateBookingStatus = async (req, res) => {
       });
     }
 
-    const booking = await Booking.findByIdAndUpdate(
-      bookingId,
-      { status },
-      { new: true }
-    )
-      .populate("userId", "name email")
-      .populate("fieldId", "name category");
+    const booking = await Booking.findByIdAndUpdate(bookingId, { status }, { new: true }).populate("userId", "name email").populate("fieldId", "name category");
 
     if (!booking) {
       return res.status(404).json({
@@ -232,7 +219,7 @@ export const getDashboardStats = async (req, res) => {
     const totalUsers = await Auth.countDocuments();
     const totalBookings = await Booking.countDocuments();
     const totalFields = await Field.countDocuments();
-    
+
     // Get bookings by status
     const pendingBookings = await Booking.countDocuments({ status: "pending" });
     const confirmedBookings = await Booking.countDocuments({ status: "confirmed" });
@@ -241,19 +228,15 @@ export const getDashboardStats = async (req, res) => {
 
     // Calculate total revenue (only confirmed and completed bookings)
     const revenueBookings = await Booking.find({
-      status: { $in: ["confirmed", "completed"] }
+      status: { $in: ["confirmed", "completed"] },
     });
-    
+
     const totalRevenue = revenueBookings.reduce((sum, booking) => {
       return sum + (booking.totalPrice || 0);
     }, 0);
 
     // Get recent bookings
-    const recentBookings = await Booking.find()
-      .populate("userId", "name email")
-      .populate("fieldId", "name category")
-      .sort({ createdAt: -1 })
-      .limit(5);
+    const recentBookings = await Booking.find().populate("userId", "name email").populate("fieldId", "name category").sort({ createdAt: -1 }).limit(5);
 
     return res.status(200).json({
       status: 200,
