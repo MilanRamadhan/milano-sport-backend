@@ -13,31 +13,22 @@ export const app = express(); // <-- diekspor
 const port = process.env.PORT || 5000;
 const host = "0.0.0.0";
 
-// CORS Configuration - Allow multiple origins
-const allowedOrigins = [
-  "http://localhost:5173", // Vite dev server
-  "http://localhost:8080", // Alternative dev port
-  "http://192.168.1.60:5173", // Local network
-  process.env.FRONTEND_URL, // Production frontend
-].filter(Boolean); // Remove undefined values
-
+// CORS Configuration - Simple and permissive for development
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, Postman, etc.)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: true, // Allow all origins in development
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
+
+// Handle preflight requests explicitly
+app.options('*', cors());
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
