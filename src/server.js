@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import authRouter from "./routes/authRouter.js";
 import bookingRouter from "./routes/bookingRoutes.js";
 import fieldRouter from "./routes/fieldRoutes.js";
+import adminRouter from "./routes/adminRoutes.js";
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/bookings", bookingRouter);
 app.use("/api/fields", fieldRouter);
+app.use("/api/admin", adminRouter);
 
 // HANYA LISTEN saat TIDAK di Vercel (untuk lokal dev)
 if (!process.env.VERCEL) {

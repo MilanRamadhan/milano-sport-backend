@@ -40,3 +40,23 @@ export const verifyToken = async (req, res, next) => {
     return res.status(401).json({ status: 401, message: "Token tidak valid atau kedaluwarsa." });
   }
 };
+
+// Middleware to check if user is admin
+export const isAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ 
+      status: 401, 
+      message: "Akses ditolak. User tidak terautentikasi." 
+    });
+  }
+
+  if (req.user.role !== true) {
+    return res.status(403).json({ 
+      status: 403, 
+      message: "Akses ditolak. Hanya admin yang dapat mengakses resource ini." 
+    });
+  }
+
+  console.log("✅ Admin access granted:", req.user.email);
+  next();
+};
