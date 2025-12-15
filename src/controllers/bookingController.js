@@ -282,16 +282,7 @@ export const getAllBookings = async (req, res) => {
     const skip = (page - 1) * limit;
 
     // Use lean() untuk faster query tanpa Mongoose document overhead
-    const [bookings, total] = await Promise.all([
-      Booking.find()
-        .populate("userId", "name email")
-        .populate("fieldId", "name pricePerHour sport")
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .skip(skip)
-        .lean(),
-      Booking.countDocuments()
-    ]);
+    const [bookings, total] = await Promise.all([Booking.find().populate("userId", "name email").populate("fieldId", "name pricePerHour sport").sort({ createdAt: -1 }).limit(limit).skip(skip).lean(), Booking.countDocuments()]);
 
     logger.info(`Admin getAllBookings | admin=${req.user?.id} count=${bookings.length} page=${page}`);
     return res.status(200).json({
@@ -301,7 +292,7 @@ export const getAllBookings = async (req, res) => {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limit),
       },
       message: "Semua booking berhasil diambil",
     });
