@@ -218,48 +218,35 @@ export const getDashboardStats = async (req, res) => {
     // Get counts
     const totalUsers = await Auth.countDocuments();
     // Run all counts in parallel for speed
-    const [
-      totalBookings,
-      totalFields,
-      bookingsByStatus,
-      revenueData,
-      recentBookings
-    ] = await Promise.all([
+    const [totalBookings, totalFields, bookingsByStatus, revenueData, recentBookings] = await Promise.all([
       Booking.countDocuments(),
       Field.countDocuments(),
-      
+
       // Get all status counts in one aggregation
-      Booking.aggregate([
-        { $group: { _id: "$status", count: { $sum: 1 } } }
-      ]),
-      
+      Booking.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+
       // Calculate revenue with aggregation (faster)
       Booking.aggregate([
         {
           $match: {
-            paymentStatus: "paid"
-          }
+            paymentStatus: "paid",
+          },
         },
         {
           $group: {
             _id: null,
-            total: { $sum: "$totalPrice" }
-          }
-        }
+            total: { $sum: "$totalPrice" },
+          },
+        },
       ]),
-      
+
       // Recent bookings with limit
-      Booking.find()
-        .populate("userId", "name email")
-        .populate("fieldId", "name sport")
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .lean()
+      Booking.find().populate("userId", "name email").populate("fieldId", "name sport").sort({ createdAt: -1 }).limit(5).lean(),
     ]);
 
     // Format booking status counts
     const statusMap = { pending: 0, active: 0, completed: 0, cancelled: 0 };
-    bookingsByStatus.forEach(item => {
+    bookingsByStatus.forEach((item) => {
       if (item._id) statusMap[item._id] = item.count;
     });
 

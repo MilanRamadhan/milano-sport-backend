@@ -182,7 +182,7 @@ export const getUserBookings = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(50) // Limit untuk prevent timeout
       .lean(); // Faster query
-    
+
     logger.info(`Get user bookings | user=${req.user?.id} count=${bookings.length}`);
     return res.status(200).json({
       status: 200,
