@@ -174,10 +174,15 @@ export const createBooking = async (req, res) => {
   }
 };
 
-// ✅ Get semua booking user
+// ✅ Get semua booking user - OPTIMIZED
 export const getUserBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find({ userId: req.user.id }).populate("fieldId", "name sport pricePerHour");
+    const bookings = await Booking.find({ userId: req.user.id })
+      .populate("fieldId", "name sport pricePerHour")
+      .sort({ createdAt: -1 })
+      .limit(50) // Limit untuk prevent timeout
+      .lean(); // Faster query
+    
     logger.info(`Get user bookings | user=${req.user?.id} count=${bookings.length}`);
     return res.status(200).json({
       status: 200,

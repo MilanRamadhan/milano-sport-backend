@@ -217,26 +217,53 @@ export const getDashboardStats = async (req, res) => {
   try {
     // Get counts
     const totalUsers = await Auth.countDocuments();
-    const totalBookings = await Booking.countDocuments();
-    const totalFields = await Field.countDocuments();
+    // Run all counts in parallel for speed
+    const [
+      totalBookings,
+      totalFields,
+      bookingsByStatus,
+      revenueData,
+      recentBookings
+    ] = await Promise.all([
+      Booking.countDocuments(),
+      Field.countDocuments(),
+      
+      // Get all status counts in one aggregation
+      Booking.aggregate([
+        { $group: { _id: "$status", count: { $sum: 1 } } }
+      ]),
+      
+      // Calculate revenue with aggregation (faster)
+      Booking.aggregate([
+        {
+          $match: {
+            paymentStatus: "paid"
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$totalPrice" }
+          }
+        }
+      ]),
+      
+      // Recent bookings with limit
+      Booking.find()
+        .populate("userId", "name email")
+        .populate("fieldId", "name sport")
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+    ]);
 
-    // Get bookings by status
-    const pendingBookings = await Booking.countDocuments({ status: "pending" });
-    const confirmedBookings = await Booking.countDocuments({ status: "confirmed" });
-    const completedBookings = await Booking.countDocuments({ status: "completed" });
-    const cancelledBookings = await Booking.countDocuments({ status: "cancelled" });
-
-    // Calculate total revenue (only confirmed and completed bookings)
-    const revenueBookings = await Booking.find({
-      status: { $in: ["confirmed", "completed"] },
+    // Format booking status counts
+    const statusMap = { pending: 0, active: 0, completed: 0, cancelled: 0 };
+    bookingsByStatus.forEach(item => {
+      if (item._id) statusMap[item._id] = item.count;
     });
 
-    const totalRevenue = revenueBookings.reduce((sum, booking) => {
-      return sum + (booking.totalPrice || 0);
-    }, 0);
-
-    // Get recent bookings
-    const recentBookings = await Booking.find().populate("userId", "name email").populate("fieldId", "name category").sort({ createdAt: -1 }).limit(5);
+    const totalRevenue = revenueData[0]?.total || 0;
 
     return res.status(200).json({
       status: 200,
@@ -244,12 +271,7 @@ export const getDashboardStats = async (req, res) => {
         totalUsers,
         totalBookings,
         totalFields,
-        bookingsByStatus: {
-          pending: pendingBookings,
-          confirmed: confirmedBookings,
-          completed: completedBookings,
-          cancelled: cancelledBookings,
-        },
+        bookingsByStatus: statusMap,
         totalRevenue,
         recentBookings,
       },
