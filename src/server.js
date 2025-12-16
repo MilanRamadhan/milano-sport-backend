@@ -47,30 +47,33 @@ app.use(
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-const clientOptions = {
-  serverApi: { version: "1", strict: true, deprecationErrors: true },
-};
-
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 
-export async function connectDB() {
-  try {
-    if (!MONGO_URI) {
-      throw new Error("Missing env MONGO_URI (or MONGODB_URI). Set it in Vercel → Project Settings → Environment Variables.");
-    }
-    await mongoose.connect(MONGO_URI, {
-      serverApi: { version: "1", strict: true, deprecationErrors: true },
-    });
-    console.log("MongoDB connected");
-  } catch (error) {
-    console.error("Koneksi ke MongoDB gagal:", error);
-    // Di Vercel jangan exit, cukup lempar error
-    if (!process.env.VERCEL) process.exit(1);
-    throw error;
-  }
+// cache untuk serverless (Vercel)
+let cached = globalThis.__mongoose;
+if (!cached) {
+  cached = globalThis.__mongoose = { conn: null, promise: null };
 }
 
-// Route test
+export async function connectDB() {
+  if (cached.conn) return cached.conn;
+
+  if (!MONGO_URI) {
+    throw new Error("Missing env MONGO_URI (or MONGODB_URI). Set it in Vercel Environment Variables.");
+  }
+
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGO_URI, {
+      serverApi: { version: "1", strict: true, deprecationErrors: true },
+    });
+  }
+
+  cached.conn = await cached.promise;
+  console.log("MongoDB connected (cached)");
+  return cached.conn;
+}
+
+// Route test (tanpa DB)
 app.get("/", (req, res) => {
   return res.status(200).json({
     status: 200,
@@ -78,6 +81,17 @@ app.get("/", (req, res) => {
     version: "1.0.0",
     documentation: "https://github.com/muhammadsyukri19/milanosport-backend",
   });
+});
+
+// DB connect khusus semua route /api/*
+app.use("/api", async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("DB connect error:", err);
+    res.status(500).json({ status: 500, message: "DB connection failed" });
+  }
 });
 
 // Routes
