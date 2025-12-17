@@ -288,7 +288,7 @@ export const getAllBookings = async (req, res) => {
 
     // Remove populate untuk speed - frontend akan handle dengan data yang ada
     const [bookings, total] = await Promise.all([
-      Booking.find().sort({ createdAt: -1 }).limit(limit).skip(skip).lean().select("date startTime endTime totalPrice paymentStatus status customerName customerPhone fieldId userId createdAt"),
+      Booking.find().sort({ createdAt: -1 }).limit(limit).skip(skip).lean().select("date startTime endTime totalPrice paymentStatus status customerName customerPhone fieldId userId createdAt proofOfPayment notes"),
       Booking.countDocuments(),
     ]);
 
