@@ -430,3 +430,49 @@ export const updatePaymentStatus = async (req, res) => {
     return res.status(500).json({ status: 500, message: "Kesalahan server internal" });
   }
 };
+
+// ✅ Get booked slots for a field on a specific date (for availability check)
+export const getBookedSlots = async (req, res) => {
+  try {
+    const { fieldId, date } = req.query;
+
+    if (!fieldId || !date) {
+      return res.status(400).json({
+        status: 400,
+        message: "fieldId dan date wajib diisi",
+      });
+    }
+
+    const bookingDate = new Date(date);
+    bookingDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(bookingDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Get all active and pending bookings for the field on the date
+    const bookings = await Booking.find({
+      fieldId,
+      date: {
+        $gte: bookingDate,
+        $lt: endDate,
+      },
+      status: { $in: ["active", "pending"] },
+    })
+      .select("startTime endTime")
+      .lean();
+
+    logger.info(`Booked slots fetched | field=${fieldId} date=${date} count=${bookings.length}`);
+
+    return res.status(200).json({
+      status: 200,
+      data: bookings.map((b) => ({
+        startTime: b.startTime,
+        endTime: b.endTime,
+      })),
+      message: "Booked slots berhasil diambil",
+    });
+  } catch (error) {
+    logger.error(`Error getting booked slots: ${error.message}`);
+    return res.status(500).json({ status: 500, message: "Kesalahan server internal" });
+  }
+};

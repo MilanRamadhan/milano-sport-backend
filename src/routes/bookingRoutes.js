@@ -1,9 +1,12 @@
 import express from "express";
-import { createBooking, getUserBookings, getBookingById, cancelBooking, getAllBookings, updatePaymentStatus, syncBookingsToFinance } from "../controllers/bookingController.js";
+import { createBooking, getUserBookings, getBookingById, cancelBooking, getAllBookings, updatePaymentStatus, syncBookingsToFinance, getBookedSlots } from "../controllers/bookingController.js";
 import { verifyToken } from "../middleware/auth.js";
 import { upload } from "../config/cloudinary.js";
 
 const router = express.Router();
+
+// Public (no auth needed for checking availability)
+router.get("/booked-slots", getBookedSlots);
 
 // User
 router.post("/", verifyToken, upload.single("proofOfPayment"), createBooking);
